@@ -15,6 +15,15 @@
 #
 
 ChallengeModes.Enable = 1
+
+#    ChallengeModes.ModifyXP
+#        Description: Enable challenge mode XP functions.
+#            If set to 0, all challenge XP editing will be disabled. Disable to allow for compatability with other XP mods.
+#        Default:     0 - Disabled
+#                     1 - Enabled
+#
+
+ChallengeModes.ModifyXP = 1
 #
 #    The following challenge modes are available:
 #        Hardcore - Players who die are permanently ghosts and can never be revived.

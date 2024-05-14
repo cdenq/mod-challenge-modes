@@ -209,6 +209,7 @@ private:
     static void LoadConfig()
     {
         sChallengeModes->itemQualityLevelMaxQuality = static_cast<ItemQualityType>(sConfigMgr->GetOption<uint32>("ItemQualityLevel.MaxQuality", ITEM_QUALITY_COMMON));
+        sChallengeModes->modifyXP = sConfigMgr->GetOption<bool>("ChallengeModes.ModifyXP", true);
 
         sChallengeModes->challengesEnabled = sConfigMgr->GetOption<bool>("ChallengeModes.Enable", false);
         if (sChallengeModes->enabled())
@@ -269,9 +270,9 @@ public:
         return (mapToCheck->find(key) != mapToCheck->end());
     }
 
-    void OnGiveXP(Player* player, uint32& amount, Unit* /*victim*/, uint8 /*xpSource*/) override
+    void ChallengeMode::OnGiveXP(Player* player, uint32& amount, Unit* victim, uint8 xpSource)
     {
-        if (!sChallengeModes->challengeEnabledForPlayer(settingName, player))
+        if (!sChallengeModes->challengeEnabledForPlayer(settingName, player) || !sChallengeModes->modifyXP)
         {
             return;
         }

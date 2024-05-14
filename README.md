@@ -15,6 +15,7 @@ This module adds the following challenge modes:
 
 Challenges can be activated per-character by interacting with the Shrine of Challenge added near the graveyard of each starting area.
 Challenges can only be enabled on characters at level 1 (or level 55 for Death Knights).
+Challenge-specific XP can be blanket disabled for compatibility with other XP mods (e.g. let mods like [individual-exp](https://github.com/azerothcore/mod-individual-xp) or [dynamic-exp](https://github.com/azerothcore/mod-dynamic-xp) handle the XP awarding). 
 
 Multiple challenges can be activated on a single character as long as they do not conflict, such as Hardcore and Semi-Hardcore.
 
