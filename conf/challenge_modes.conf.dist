@@ -51,7 +51,13 @@ ChallengeModes.Enable = 1
 #        To never disable a challenge, set to 0.
 #        Example: <Challenge>.DisableLevel = 80
 #
-#
+#   Special options for specific challenges.
+#   ItemQualityLevel.MaxQuality = 1
+#       Sets the maximum item quality allowed to be worn for this challenge
+#       0 = Gray only
+#       1 = White and gray only (default)
+#       2 = Green, white, and gray only
+#       3 = Blue, green, white, and gray only
 
 Hardcore.Enable = 1
 Hardcore.TitleRewards = ""
@@ -80,6 +86,7 @@ ItemQualityLevel.XPMultiplier = 1
 ItemQualityLevel.TalentRewards = ""
 ItemQualityLevel.ItemRewards = ""
 ItemQualityLevel.DisableLevel = 0
+ItemQualityLevel.MaxQuality = 1
 
 SlowXpGain.Enable = 1
 SlowXpGain.TitleRewards = ""

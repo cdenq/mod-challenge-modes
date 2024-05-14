@@ -1,8 +1,8 @@
 /*
  * Copyright (C) 2016+ AzerothCore <www.azerothcore.org>, released under GNU AGPL v3 license: https://github.com/azerothcore/azerothcore-wotlk/blob/master/LICENSE-AGPL3
  */
-
 #include "ChallengeModes.h"
+#include "ScriptMgr.h"
 
 ChallengeModes* ChallengeModes::instance()
 {
@@ -208,6 +208,8 @@ private:
 
     static void LoadConfig()
     {
+        sChallengeModes->itemQualityLevelMaxQuality = static_cast<ItemQualityType>(sConfigMgr->GetOption<uint32>("ItemQualityLevel.MaxQuality", ITEM_QUALITY_COMMON));
+
         sChallengeModes->challengesEnabled = sConfigMgr->GetOption<bool>("ChallengeModes.Enable", false);
         if (sChallengeModes->enabled())
         {
@@ -251,6 +253,16 @@ public:
                            ChallengeModeSettings settingName)
             : PlayerScript(scriptName), settingName(settingName)
     { }
+
+    virtual const char* GetChallengeName() const = 0;
+
+    void OnLogin(Player* player) override
+    {
+        if (sChallengeModes->challengeEnabledForPlayer(settingName, player))
+        {
+            ChatHandler(player->GetSession()).PSendSysMessage("You have the %s challenge mode enabled.", this->GetChallengeName());
+        }
+    }
 
     static bool mapContainsKey(const std::unordered_map<uint8, uint32>* mapToCheck, uint8 key)
     {
@@ -314,14 +326,24 @@ class ChallengeMode_Hardcore : public ChallengeMode
 public:
     ChallengeMode_Hardcore() : ChallengeMode("ChallengeMode_Hardcore", SETTING_HARDCORE) {}
 
+    const char* GetChallengeName() const override
+    {
+        return "Hardcore";
+    }
+
     void OnLogin(Player* player) override
     {
-        if (!sChallengeModes->challengeEnabledForPlayer(SETTING_HARDCORE, player) || !sChallengeModes->challengeEnabledForPlayer(HARDCORE_DEAD, player))
+        if (sChallengeModes->challengeEnabledForPlayer(SETTING_HARDCORE, player))
         {
-            return;
+            ChatHandler(player->GetSession()).PSendSysMessage("You have the %s challenge mode enabled.", GetChallengeName());
+
+            if (sChallengeModes->challengeEnabledForPlayer(HARDCORE_DEAD, player))
+            {
+                player->KillPlayer();
+                player->GetSession()->KickPlayer("Your hardcore character has died!");
+                return;
+            }
         }
-        player->KillPlayer();
-        player->GetSession()->KickPlayer("Hardcore character died");
     }
 
     void OnPlayerReleasedGhost(Player* player) override
@@ -380,6 +402,11 @@ class ChallengeMode_SemiHardcore : public ChallengeMode
 public:
     ChallengeMode_SemiHardcore() : ChallengeMode("ChallengeMode_SemiHardcore", SETTING_SEMI_HARDCORE) {}
 
+    const char* GetChallengeName() const override
+    {
+        return "Semi-Hardcore";
+    }
+
     void OnPlayerKilledByCreature(Creature* /*killer*/, Player* player) override
     {
         if (!sChallengeModes->challengeEnabledForPlayer(SETTING_SEMI_HARDCORE, player))
@@ -416,15 +443,25 @@ class ChallengeMode_SelfCrafted : public ChallengeMode
 public:
     ChallengeMode_SelfCrafted() : ChallengeMode("ChallengeMode_SelfCrafted", SETTING_SELF_CRAFTED) {}
 
+    const char* GetChallengeName() const override
+    {
+        return "Self Crafted";
+    }
+
     bool CanEquipItem(Player* player, uint8 /*slot*/, uint16& /*dest*/, Item* pItem, bool /*swap*/, bool /*not_loading*/) override
     {
         if (!sChallengeModes->challengeEnabledForPlayer(SETTING_SELF_CRAFTED, player))
         {
             return true;
         }
-        if (!pItem->GetTemplate()->HasSignature())
-        {
-            return false;
+        if (!pItem->GetTemplate()->HasSignature()) {
+            // Check if the item is a fishing pole
+            if (pItem->GetTemplate()->Class == ITEM_CLASS_WEAPON && pItem->GetTemplate()->SubClass == ITEM_SUBCLASS_WEAPON_FISHING_POLE) {
+                return true;
+            }
+            else {
+                return false;
+            }
         }
         return pItem->GetGuidValue(ITEM_FIELD_CREATOR) == player->GetGUID();
     }
@@ -445,13 +482,18 @@ class ChallengeMode_ItemQualityLevel : public ChallengeMode
 public:
     ChallengeMode_ItemQualityLevel() : ChallengeMode("ChallengeMode_ItemQualityLevel", SETTING_ITEM_QUALITY_LEVEL) {}
 
-    bool CanEquipItem(Player* player, uint8 /*slot*/, uint16& /*dest*/, Item* pItem, bool /*swap*/, bool /*not_loading*/) override
+    const char* GetChallengeName() const override
     {
-        if (!sChallengeModes->challengeEnabledForPlayer(SETTING_ITEM_QUALITY_LEVEL, player))
+        return "Item Quality Restriction";
+    }
+
+    bool ChallengeModes::CanEquipItem(Player* player, uint8 /*slot*/, uint16& /*dest*/, Item* pItem, bool /*swap*/, bool /*not_loading*/) override
+    {
+        if (!challengeEnabledForPlayer(SETTING_ITEM_QUALITY_LEVEL, player))
         {
             return true;
         }
-        return pItem->GetTemplate()->Quality <= ITEM_QUALITY_NORMAL;
+        return pItem->GetTemplate()->Quality <= itemQualityLevelMaxQuality;
     }
 
     void OnGiveXP(Player* player, uint32& amount, Unit* victim, uint8 xpSource) override
@@ -470,6 +512,11 @@ class ChallengeMode_SlowXpGain : public ChallengeMode
 public:
     ChallengeMode_SlowXpGain() : ChallengeMode("ChallengeMode_SlowXpGain", SETTING_SLOW_XP_GAIN) {}
 
+    const char* GetChallengeName() const override
+    {
+        return "Slow XP Gain";
+    }
+
     void OnGiveXP(Player* player, uint32& amount, Unit* victim, uint8 xpSource) override
     {
         ChallengeMode::OnGiveXP(player, amount, victim, xpSource);
@@ -486,6 +533,11 @@ class ChallengeMode_VerySlowXpGain : public ChallengeMode
 public:
     ChallengeMode_VerySlowXpGain() : ChallengeMode("ChallengeMode_VerySlowXpGain", SETTING_VERY_SLOW_XP_GAIN) {}
 
+    const char* GetChallengeName() const override
+    {
+        return "Very Slow XP Gain";
+    }
+
     void OnGiveXP(Player* player, uint32& amount, Unit* victim, uint8 xpSource) override
     {
         ChallengeMode::OnGiveXP(player, amount, victim, xpSource);
@@ -501,6 +553,11 @@ class ChallengeMode_QuestXpOnly : public ChallengeMode
 {
 public:
     ChallengeMode_QuestXpOnly() : ChallengeMode("ChallengeMode_QuestXpOnly", SETTING_QUEST_XP_ONLY) {}
+
+    const char* GetChallengeName() const override
+    {
+        return "Quest Only XP";
+    }
 
     void OnGiveXP(Player* player, uint32& amount, Unit* victim, uint8 xpSource) override
     {
@@ -532,6 +589,11 @@ class ChallengeMode_IronMan : public ChallengeMode
 {
 public:
     ChallengeMode_IronMan() : ChallengeMode("ChallengeMode_IronMan", SETTING_IRON_MAN) {}
+
+    const char* GetChallengeName() const override
+    {
+        return "Iron Man";
+    }
 
     void OnPlayerResurrect(Player* player, float /*restore_percent*/, bool /*applySickness*/) override
     {
